@@ -5,10 +5,17 @@ import GameScreen from "./components/GameScreen";
 
 export default function App() {
   const [started, setStarted] = useState(false);
+  const [gameKey, setGameKey] = useState(0);
+
+  const restartGame = () => setGameKey((k) => k + 1);
 
   return (
     <View style={{ flex: 1 }}>
-      {started ? <GameScreen /> : <WelcomeScreen onStart={() => setStarted(true)} />}
+      {started ? (
+        <GameScreen key={gameKey} onRestart={restartGame} />
+      ) : (
+        <WelcomeScreen onStart={() => setStarted(true)} />
+      )}
     </View>
   );
 }
