@@ -43,4 +43,4 @@ yarn-error.*
 .claude/
 /docs
 CLAUDE.md
-TASK.md
+TASKS.md
