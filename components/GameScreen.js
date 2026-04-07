@@ -5,7 +5,7 @@ import useGameEngine from "../hooks/useGameEngine";
 import GameOverlay from "./GameOverlay";
 import GameControls from "./GameControls";
 import ConfirmModal from "./ConfirmModal";
-import { PLAYER_WIDTH, PLAYER_HEIGHT, BALL_RADIUS } from "../constants/gameConstants";
+import { PLAYER_WIDTH, PLAYER_HEIGHT } from "../constants/gameConstants";
 
 export default function GameScreen({ onRestart, onHome, sounds }) {
   const [playAreaSize, setPlayAreaSize] = useState(null);
@@ -74,7 +74,16 @@ export default function GameScreen({ onRestart, onHome, sounds }) {
             {balls.map((ball, index) => (
               <View
                 key={`ball-${index}`}
-                style={[styles.ball, { left: ball.x - BALL_RADIUS, top: ball.y - BALL_RADIUS }]}
+                style={[
+                  styles.ball,
+                  {
+                    left: ball.x - ball.radius,
+                    top: ball.y - ball.radius,
+                    width: ball.radius * 2,
+                    height: ball.radius * 2,
+                    borderRadius: ball.radius,
+                  },
+                ]}
               />
             ))}
           </>
@@ -169,9 +178,6 @@ const styles = StyleSheet.create({
   },
   ball: {
     position: "absolute",
-    width: BALL_RADIUS * 2,
-    height: BALL_RADIUS * 2,
-    borderRadius: BALL_RADIUS,
     backgroundColor: "#F97316",
     borderWidth: 2,
     borderColor: "rgba(255,255,255,0.35)",

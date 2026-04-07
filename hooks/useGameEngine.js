@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { Animated, Dimensions } from "react-native";
 import Matter from "matter-js";
-import { PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_MOVE_STEP, BALL_COUNT } from "../constants/gameConstants";
+import { PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_MOVE_STEP, BALL_RADIUS, BALL_COUNT } from "../constants/gameConstants";
 import { createBall, resetBall } from "../physics/bodies";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+// Size milestone: at score >= 50, grow by 0.1x every 25 pts, cap at 2.0x
+const getBallTargetScale = (score) => {
+  if (score < 50) return 1.0;
+  return Math.min(1.0 + Math.floor((score - 50) / 25) * 0.1, 2.0);
+};
 
 export default function useGameEngine(playAreaSize, overlayOpacity, scoreFlash, sounds, paused) {
   const [playerX, setPlayerX] = useState(SCREEN_WIDTH / 2);
@@ -26,6 +32,7 @@ export default function useGameEngine(playAreaSize, overlayOpacity, scoreFlash, 
   const dodgeCountRef = useRef(0);
   const dodgeMilestoneRef = useRef(0);
   const pausedRef = useRef(false);
+  const ballScaleRef = useRef(1.0);
 
   useEffect(() => {
     pausedRef.current = paused;
@@ -55,9 +62,10 @@ export default function useGameEngine(playAreaSize, overlayOpacity, scoreFlash, 
     playerBodyRef.current = player;
     ballBodiesRef.current = spawnedBalls;
     gameOverRef.current = false;
+    ballScaleRef.current = 1.0;
     setGameOver(false);
     setPlayerX(player.position.x);
-    setBalls(spawnedBalls.map((b) => ({ x: b.position.x, y: b.position.y })));
+    setBalls(spawnedBalls.map((b) => ({ x: b.position.x, y: b.position.y, radius: BALL_RADIUS })));
     setScore(0);
     startTimeRef.current = Date.now();
     lastTimeRef.current = 0;
@@ -118,10 +126,23 @@ export default function useGameEngine(playAreaSize, overlayOpacity, scoreFlash, 
 
       if (!gameOverRef.current && !pausedRef.current) {
         Matter.Engine.update(engine, delta);
-        setPlayerX(player.position.x);
-        setBalls(ballBodiesRef.current.map((b) => ({ x: b.position.x, y: b.position.y })));
 
-        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+        // Ball size scaling after score >= 50
+        const elapsedMs = (Date.now() - startTimeRef.current) / 1000;
+        const currentScore = Math.floor(elapsedMs) + bonusRef.current;
+        const targetScale = getBallTargetScale(currentScore);
+        if (targetScale > ballScaleRef.current) {
+          const factor = targetScale / ballScaleRef.current;
+          ballBodiesRef.current.forEach((b) => Matter.Body.scale(b, factor, factor));
+          ballScaleRef.current = targetScale;
+          sounds.playBonus();
+        }
+
+        const visualRadius = BALL_RADIUS * ballScaleRef.current;
+        setPlayerX(player.position.x);
+        setBalls(ballBodiesRef.current.map((b) => ({ x: b.position.x, y: b.position.y, radius: visualRadius })));
+
+        const elapsed = Math.floor(elapsedMs);
 
         const newLevel = Math.floor(elapsed / 15);
         if (newLevel > difficultyLevelRef.current) {
