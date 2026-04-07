@@ -6,7 +6,7 @@ import { createBall, resetBall } from "../physics/bodies";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-export default function useGameEngine(playAreaSize, overlayOpacity, scoreFlash) {
+export default function useGameEngine(playAreaSize, overlayOpacity, scoreFlash, sounds, paused) {
   const [playerX, setPlayerX] = useState(SCREEN_WIDTH / 2);
   const [balls, setBalls] = useState([]);
   const [score, setScore] = useState(0);
@@ -23,6 +23,13 @@ export default function useGameEngine(playAreaSize, overlayOpacity, scoreFlash) 
   const bonusRef = useRef(0);
   const lastMilestoneRef = useRef(0);
   const difficultyLevelRef = useRef(0);
+  const dodgeCountRef = useRef(0);
+  const dodgeMilestoneRef = useRef(0);
+  const pausedRef = useRef(false);
+
+  useEffect(() => {
+    pausedRef.current = paused;
+  }, [paused]);
 
   useEffect(() => {
     if (!playAreaSize) return undefined;
@@ -57,6 +64,8 @@ export default function useGameEngine(playAreaSize, overlayOpacity, scoreFlash) 
     bonusRef.current = 0;
     lastMilestoneRef.current = 0;
     difficultyLevelRef.current = 0;
+    dodgeCountRef.current = 0;
+    dodgeMilestoneRef.current = 0;
     overlayOpacity.setValue(0);
 
     const handleCollision = (event) => {
@@ -70,6 +79,9 @@ export default function useGameEngine(playAreaSize, overlayOpacity, scoreFlash) 
       if (playerHit) {
         gameOverRef.current = true;
         setGameOver(true);
+        sounds.playImpact();
+        sounds.pauseMusic();
+        setTimeout(() => sounds.playHit(), 400);
         Animated.timing(overlayOpacity, { toValue: 1, duration: 350, useNativeDriver: true }).start();
         return;
       }
@@ -78,7 +90,20 @@ export default function useGameEngine(playAreaSize, overlayOpacity, scoreFlash) 
         const labels = [bodyA.label, bodyB.label];
         const ballBody = [bodyA, bodyB].find((b) => b.label.startsWith("ball-"));
         if (labels.includes("floor") && ballBody) {
+          sounds.playBounce();
           resetBall(ballBody, width, difficultyLevelRef.current);
+
+          dodgeCountRef.current += 1;
+          const dodgeMilestone = Math.floor(dodgeCountRef.current / 5);
+          if (dodgeMilestone > dodgeMilestoneRef.current) {
+            dodgeMilestoneRef.current = dodgeMilestone;
+            bonusRef.current += 5;
+            sounds.playBonus();
+            Animated.sequence([
+              Animated.timing(scoreFlash, { toValue: 1.5, duration: 120, useNativeDriver: true }),
+              Animated.timing(scoreFlash, { toValue: 1, duration: 120, useNativeDriver: true }),
+            ]).start();
+          }
         }
       });
     };
@@ -88,10 +113,10 @@ export default function useGameEngine(playAreaSize, overlayOpacity, scoreFlash) 
 
     const update = (timestamp) => {
       if (!lastTimeRef.current) lastTimeRef.current = timestamp;
-      const delta = Math.min(timestamp - lastTimeRef.current, 32);
+      const delta = Math.min(timestamp - lastTimeRef.current, 16.667);
       lastTimeRef.current = timestamp;
 
-      if (!gameOverRef.current) {
+      if (!gameOverRef.current && !pausedRef.current) {
         Matter.Engine.update(engine, delta);
         setPlayerX(player.position.x);
         setBalls(ballBodiesRef.current.map((b) => ({ x: b.position.x, y: b.position.y })));
@@ -108,6 +133,7 @@ export default function useGameEngine(playAreaSize, overlayOpacity, scoreFlash) 
         if (milestone > lastMilestoneRef.current) {
           bonusRef.current += (milestone - lastMilestoneRef.current) * 10;
           lastMilestoneRef.current = milestone;
+          sounds.playBonus();
           Animated.sequence([
             Animated.timing(scoreFlash, { toValue: 1.5, duration: 120, useNativeDriver: true }),
             Animated.timing(scoreFlash, { toValue: 1, duration: 120, useNativeDriver: true }),

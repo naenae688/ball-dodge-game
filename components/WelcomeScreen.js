@@ -1,7 +1,8 @@
 import React, { useRef, useEffect } from "react";
 import { View, Text, StyleSheet, Pressable, Animated } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
-export default function WelcomeScreen({ onStart }) {
+export default function WelcomeScreen({ onStart, sounds }) {
   const pulse = useRef(new Animated.Value(1)).current;
   const ballY = useRef(new Animated.Value(0)).current;
 
@@ -25,6 +26,14 @@ export default function WelcomeScreen({ onStart }) {
     <View style={styles.screen}>
       <View style={styles.bgLayer1} />
       <View style={styles.bgLayer2} />
+
+      <Pressable style={styles.muteBtn} onPress={sounds.toggleMute}>
+        <Ionicons
+          name={sounds.isMuted ? "volume-mute" : "volume-high"}
+          size={18}
+          color="rgba(255,255,255,0.7)"
+        />
+      </Pressable>
 
       <View style={styles.content}>
         <View>
@@ -172,5 +181,16 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.45)",
     fontSize: 12,
     marginTop: 14,
+  },
+  muteBtn: {
+    position: "absolute",
+    top: 52,
+    right: 22,
+    zIndex: 2,
+    backgroundColor: "rgba(11,16,32,0.72)",
+    borderRadius: 10,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
   },
 });
